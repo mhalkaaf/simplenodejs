@@ -1,0 +1,36 @@
+stages:
+  - build
+  - deploy
+
+#build
+build_container:
+  stage: build
+  image: docker:18-git
+  services:
+    - docker:18-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+
+  script:
+    # login to docker
+    - docker login -u $DOCKER_USER -p $DOCKER_PASS
+    # build and tag docker image
+    - docker build -t mhalkaaf/simplenode ./nodejs
+    - docker build -t mhalkaaf/simplenginx ./nginx
+    # publish finished image
+    - docker push mhalkaaf/simplenode
+    - docker push mhalkaaf/simplenginx
+
+#deployw
+deploy_ec2:
+  stage: deploy
+  only:
+    - "master"
+  before_script:
+    - chmod 400 $SSH_KEY
+  script:
+    - ssh -o StrictHostKeyChecking=no -i $SSH_KEY $PRODUCTION_USER@$PRODUCTION_SERVER "
+        cd simplenodejs &&
+        docker compose down &&
+        docker compose up -d"
+

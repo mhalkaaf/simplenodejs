@@ -1,0 +1,13 @@
+version: '3'
+services:
+  nodejs:
+    build:
+      context: ./nodejs
+      dockerfile: Dockerfile
+  nginx:
+    restart: always
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - '80:80'
