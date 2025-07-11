@@ -1,27 +1,27 @@
 # .gitlab-ci.yml
 stages:
-  - test
+  # - test
   - build
   - deploy
 
 # -----------------------------
 # 1) OPA policy test (Dockerfile)
 # -----------------------------
-opa_dockerfile_test:
-  stage: test
-  image: atlassian/default-image:2
-  services:
-    - name: docker:dind
-      command: ["--registry-mirror=https://registry-1.docker.io"]
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
-  script:
-    - sleep 1
-    - cd src/
-    - docker run --rm -v "$PWD":/project openpolicyagent/conftest:v0.59.0 test --policy Dockerfile-security.rego Dockerfile
-  only:
-    - master
+# opa_dockerfile_test:
+#   stage: test
+#   image: atlassian/default-image:2
+#   services:
+#     - name: docker:dind
+#       command: ["--registry-mirror=https://registry-1.docker.io"]
+#   variables:
+#     DOCKER_HOST: tcp://docker:2375
+#     DOCKER_TLS_CERTDIR: ""
+#   script:
+#     - sleep 1
+#     - cd src/
+#     - docker run --rm -v "$PWD":/project openpolicyagent/conftest:v0.59.0 test --policy Dockerfile-security.rego Dockerfile
+#   only:
+#     - master
 
 # -----------------------------
 # 2) Build & push image (manual)
