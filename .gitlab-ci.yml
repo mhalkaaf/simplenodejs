@@ -18,6 +18,7 @@ opa_dockerfile_test:
     DOCKER_TLS_CERTDIR: ""
   script:
     - sleep 1
+    - cd src/
     - docker run --rm -v "$PWD":/project openpolicyagent/conftest:v0.59.0 test --policy Dockerfile-security.rego Dockerfile
   only:
     - master
