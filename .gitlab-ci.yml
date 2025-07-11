@@ -1,36 +1,87 @@
+# .gitlab-ci.yml
 stages:
+  - test
   - build
   - deploy
 
-#build
-build_container:
-  stage: build
-  image: docker:18-git
+# -----------------------------
+# 1) OPA policy test (Dockerfile)
+# -----------------------------
+opa_dockerfile_test:
+  stage: test
+  image: atlassian/default-image:2
   services:
-    - docker:18-dind
+    - name: docker:dind
+      command: ["--registry-mirror=https://registry-1.docker.io"]
   variables:
-    DOCKER_TLS_CERTDIR: "/certs"
-
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
   script:
-    # login to docker
-    - docker login -u $DOCKER_USER -p $DOCKER_PASS
-    # build and tag docker image
-    - docker build -t mhalkaaf/simplenode ./nodejs
-    - docker build -t mhalkaaf/simplenginx ./nginx
-    # publish finished image
-    - docker push mhalkaaf/simplenode
-    - docker push mhalkaaf/simplenginx
-
-#deployw
-deploy_ec2:
-  stage: deploy
+    - sleep 1
+    - docker run --rm -v "$PWD":/project openpolicyagent/conftest:v0.59.0 test --policy Dockerfile-security.rego Dockerfile
   only:
-    - "master"
-  before_script:
-    - chmod 400 $SSH_KEY
-  script:
-    - ssh -o StrictHostKeyChecking=no -i $SSH_KEY $PRODUCTION_USER@$PRODUCTION_SERVER "
-        cd simplenodejs &&
-        docker compose down &&
-        docker compose up -d"
+    - master
 
+# -----------------------------
+# 2) Build & push image (manual)
+# -----------------------------
+build_gcp_prod:
+  stage: build
+  image: google/cloud-sdk:stable
+  services:
+    - name: docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+    COMMIT_SHORT: "${CI_COMMIT_SHA:0:7}"
+    STABLE_IMAGE: "$GCP_PRODUCTION_GCR/$GCP_PRODUCTION_PROJECT_ID/asaren-api/asaren-api:prod-${COMMIT_SHORT}"
+  script:
+    - cd src/
+    - echo "$GCP_PRODUCTION_SERVICE_ACCOUNT" | base64 --decode > service-account.json
+    - gcloud auth activate-service-account --key-file service-account.json
+    - gcloud config set project "$GCP_PRODUCTION_PROJECT_ID"
+    - gcloud auth configure-docker "$GCP_PRODUCTION_GCR" --quiet
+    - docker build -t "$STABLE_IMAGE" .
+    - docker push "$STABLE_IMAGE"
+  only:
+    - master
+
+# -----------------------------------------
+# 3) Parallel deploys to two prod workloads
+# -----------------------------------------
+.deploy_template: &deploy_job
+  stage: deploy
+  image: google/cloud-sdk:latest
+  variables:
+    COMMIT_SHORT: "${CI_COMMIT_SHA:0:7}"
+    IMAGE: "$GCP_PRODUCTION_GCR/$GCP_PRODUCTION_PROJECT_ID/asaren-api/asaren-api:prod-${COMMIT_SHORT}"
+  script:
+    - echo "$GCP_PRODUCTION_SERVICE_ACCOUNT" | base64 --decode > service-account.json
+    - gcloud auth activate-service-account --key-file service-account.json
+    - gcloud config set project "$GCP_PRODUCTION_PROJECT_ID"
+    - gcloud container clusters get-credentials "$GCP_PRODUCTION_GKE_CLUSTER" --region="$GCP_PRODUCTION_CLUSTER_REGION"
+    - echo "$COMMIT_SHORT"
+    - kubectl --namespace "$GCP_PRODUCTION_NAMESPACE" set image "$DEPLOYMENT_NAME" "$CONTAINER_NAME"="$IMAGE"
+    - kubectl rollout status deployment/"$DEPLOYMENT_NAME" -n "$GCP_PRODUCTION_NAMESPACE" --timeout=600s
+  needs: [build_gcp_prod]   # wait for image build
+  when: manual
+  only:
+    - master
+
+deploy_prod_v1:
+  <<: *deploy_job
+  variables:
+    <<: *deploy_job:variables
+    DEPLOYMENT_NAME: "asaren-api"
+    CONTAINER_NAME: "asaren-api"
+  environment:
+    name: gcp-asaren-production
+
+deploy_prod_v2:
+  <<: *deploy_job
+  variables:
+    <<: *deploy_job:variables
+    DEPLOYMENT_NAME: "asaren-api-v2"
+    CONTAINER_NAME: "asaren-api-v2"
+  environment:
+    name: gcp-asaren-production-v2
