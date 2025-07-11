@@ -35,7 +35,7 @@ build_gcp_prod:
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
     COMMIT_SHORT: "${CI_COMMIT_SHA:0:7}"
-    STABLE_IMAGE: "$GCP_PRODUCTION_GCR/$GCP_PRODUCTION_PROJECT_ID/asaren-api/asaren-api:prod-${COMMIT_SHORT}"
+    STABLE_IMAGE: "$GCP_PRODUCTION_GCR/$GCP_PRODUCTION_PROJECT_ID/simplenode/simplenode:test-${COMMIT_SHORT}"
   script:
     - cd src/
     - echo "$GCP_PRODUCTION_SERVICE_ACCOUNT" | base64 --decode > service-account.json
@@ -56,17 +56,17 @@ deploy_prod_v1:
   image: google/cloud-sdk:latest
   variables:
     COMMIT_SHORT: "${CI_COMMIT_SHA:0:7}"
-    IMAGE: "$GCP_PRODUCTION_GCR/$GCP_PRODUCTION_PROJECT_ID/asaren-api/asaren-api:prod-${COMMIT_SHORT}"
-    DEPLOYMENT_NAME: "asaren-api"
-    CONTAINER_NAME: "asaren-api"
+    IMAGE: "$GCP_PRODUCTION_GCR/$GCP_PRODUCTION_PROJECT_ID/simplenode/simplenode:test-${COMMIT_SHORT}"
+    DEPLOYMENT_NAME: "simplenode"
+    CONTAINER_NAME: "simplenode"
   script:
     - echo "$GCP_PRODUCTION_SERVICE_ACCOUNT" | base64 --decode > service-account.json
     - gcloud auth activate-service-account --key-file service-account.json
     - gcloud config set project "$GCP_PRODUCTION_PROJECT_ID"
     - gcloud container clusters get-credentials "$GCP_PRODUCTION_GKE_CLUSTER" --region="$GCP_PRODUCTION_CLUSTER_REGION"
     - echo "$COMMIT_SHORT"
-    - kubectl --namespace "$GCP_PRODUCTION_NAMESPACE" set image deployment/$DEPLOYMENT_NAME $CONTAINER_NAME=$IMAGE
-    - kubectl rollout status deployment/$DEPLOYMENT_NAME -n "$GCP_PRODUCTION_NAMESPACE" --timeout=600s
+    - kubectl --namespace "$GCP_HAECKAL1" set image deployment/$DEPLOYMENT_NAME $CONTAINER_NAME=$IMAGE
+    - kubectl rollout status deployment/$DEPLOYMENT_NAME -n "$GCP_HAECKAL1" --timeout=600s
   needs: [build_gcp_prod]
   when: manual
   only:
@@ -82,17 +82,17 @@ deploy_prod_v2:
   image: google/cloud-sdk:latest
   variables:
     COMMIT_SHORT: "${CI_COMMIT_SHA:0:7}"
-    IMAGE: "$GCP_PRODUCTION_GCR/$GCP_PRODUCTION_PROJECT_ID/asaren-api/asaren-api:prod-${COMMIT_SHORT}"
-    DEPLOYMENT_NAME: "asaren-api-v2"
-    CONTAINER_NAME: "asaren-api-v2"
+    IMAGE: "$GCP_PRODUCTION_GCR/$GCP_PRODUCTION_PROJECT_ID/simplenode/simplenode:test-${COMMIT_SHORT}"
+    DEPLOYMENT_NAME: "simplenode"
+    CONTAINER_NAME: "simplenode"
   script:
     - echo "$GCP_PRODUCTION_SERVICE_ACCOUNT" | base64 --decode > service-account.json
     - gcloud auth activate-service-account --key-file service-account.json
     - gcloud config set project "$GCP_PRODUCTION_PROJECT_ID"
     - gcloud container clusters get-credentials "$GCP_PRODUCTION_GKE_CLUSTER" --region="$GCP_PRODUCTION_CLUSTER_REGION"
     - echo "$COMMIT_SHORT"
-    - kubectl --namespace "$GCP_PRODUCTION_NAMESPACE" set image deployment/$DEPLOYMENT_NAME $CONTAINER_NAME=$IMAGE
-    - kubectl rollout status deployment/$DEPLOYMENT_NAME -n "$GCP_PRODUCTION_NAMESPACE" --timeout=600s
+    - kubectl --namespace "$GCP_HAECKAL2" set image deployment/$DEPLOYMENT_NAME $CONTAINER_NAME=$IMAGE
+    - kubectl rollout status deployment/$DEPLOYMENT_NAME -n "$GCP_HAECKAL2" --timeout=600s
   needs: [build_gcp_prod]
   when: manual
   only:
