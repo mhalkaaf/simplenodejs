@@ -28,7 +28,7 @@ stages:
 # -----------------------------
 build_gcp_prod:
   stage: build
-  image: google/cloud-sdk:stable
+  image: google/cloud-sdk:slim
   services:
     - name: docker:dind
   variables:
@@ -53,7 +53,7 @@ build_gcp_prod:
 # -----------------------------
 deploy_prod_v1:
   stage: deploy
-  image: google/cloud-sdk:latest
+  image: google/cloud-sdk:slim
   variables:
     COMMIT_SHORT: "${CI_COMMIT_SHA:0:7}"
     IMAGE: "$GCP_PRODUCTION_GCR/$GCP_PRODUCTION_PROJECT_ID/simplenode/simplenode:test-${COMMIT_SHORT}"
@@ -79,7 +79,7 @@ deploy_prod_v1:
 # -----------------------------
 deploy_prod_v2:
   stage: deploy
-  image: google/cloud-sdk:latest
+  image: google/cloud-sdk:slim
   variables:
     COMMIT_SHORT: "${CI_COMMIT_SHA:0:7}"
     IMAGE: "$GCP_PRODUCTION_GCR/$GCP_PRODUCTION_PROJECT_ID/simplenode/simplenode:test-${COMMIT_SHORT}"
